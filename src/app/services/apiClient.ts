@@ -16,16 +16,36 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (err) {
+      throw {
+        status: 0,
+        message: 'No se pudo conectar al servidor. Verifica tu conexión a internet o intenta más tarde.',
+      };
+    }
 
     if (response.status === 401) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       window.location.href = '/';
-      throw new Error('Session expired');
+      throw { status: 401, message: 'Tu sesión ha expirado. Inicia sesión nuevamente.' };
+    }
+
+    if (response.status === 403) {
+      throw { status: 403, message: 'No tienes permisos para realizar esta acción.' };
+    }
+
+    if (response.status === 404) {
+      throw { status: 404, message: 'El recurso solicitado no fue encontrado.' };
+    }
+
+    if (response.status >= 500) {
+      throw { status: response.status, message: 'Error interno del servidor. Intenta más tarde.' };
     }
 
     if (!response.ok) {
