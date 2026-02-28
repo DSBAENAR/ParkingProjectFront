@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
 import { Dashboard } from "./components/Dashboard";
@@ -7,6 +7,8 @@ import { Registers } from "./components/Registers";
 import { Payments } from "./components/Payments";
 import { Users } from "./components/Users";
 import { Reports } from "./components/Reports";
+import { NotFound } from "./components/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -15,7 +17,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/app",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Dashboard /> },
       { path: "vehicles", element: <Vehicles /> },
@@ -24,5 +30,9 @@ export const router = createBrowserRouter([
       { path: "users", element: <Users /> },
       { path: "reports", element: <Reports /> },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);

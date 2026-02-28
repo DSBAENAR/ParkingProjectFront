@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Car, Bike, Truck, Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -8,87 +8,132 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
+import { Skeleton } from './ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { toast } from 'sonner';
-
-type VehicleType = 'CAR' | 'MOTORCYCLE' | 'OFFICIAL';
-
-interface Vehicle {
-  id: string;
-  type: VehicleType;
-}
+import { vehicleService } from '../services/vehicleService';
+import type { Vehicle, VehicleType } from '../types/api';
 
 export function Vehicles() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([
-    { id: 'ABC-123', type: 'CAR' },
-    { id: 'XYZ-789', type: 'MOTORCYCLE' },
-    { id: 'DEF-456', type: 'CAR' },
-    { id: 'GHI-321', type: 'OFFICIAL' },
-    { id: 'JKL-654', type: 'CAR' },
-    { id: 'MNO-987', type: 'MOTORCYCLE' },
-  ]);
-
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newVehicle, setNewVehicle] = useState<Vehicle>({
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<Vehicle | null>(null);
+  const [editType, setEditType] = useState<VehicleType>('RESIDENT');
+  const [newVehicle, setNewVehicle] = useState<{ id: string; type: VehicleType }>({
     id: '',
-    type: 'CAR',
+    type: 'RESIDENT',
   });
+
+  useEffect(() => {
+    loadVehicles();
+  }, []);
+
+  const loadVehicles = async () => {
+    setIsLoading(true);
+    try {
+      const data = await vehicleService.getAll();
+      setVehicles(data);
+    } catch (err: any) {
+      if (err.status !== 404) toast.error(err.message || 'Error al cargar vehículos');
+      setVehicles([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredVehicles = vehicles.filter((vehicle) =>
     vehicle.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddVehicle = () => {
+  const handleAddVehicle = async () => {
     if (!newVehicle.id) {
       toast.error('Por favor ingresa una placa');
       return;
     }
 
-    if (vehicles.some((v) => v.id === newVehicle.id)) {
-      toast.error('Este vehículo ya está registrado');
-      return;
+    try {
+      const saved = await vehicleService.create(newVehicle);
+      setVehicles([...vehicles, saved]);
+      toast.success('Vehículo registrado exitosamente');
+      setIsDialogOpen(false);
+      setNewVehicle({ id: '', type: 'RESIDENT' });
+    } catch (err: any) {
+      toast.error(err.message || 'Error al registrar vehículo');
     }
-
-    setVehicles([...vehicles, newVehicle]);
-    toast.success('Vehículo registrado exitosamente');
-    setIsDialogOpen(false);
-    setNewVehicle({ id: '', type: 'CAR' });
   };
 
-  const handleDeleteVehicle = (id: string) => {
-    setVehicles(vehicles.filter((v) => v.id !== id));
-    toast.success('Vehículo eliminado exitosamente');
+  const handleDeleteVehicle = async (id: string) => {
+    try {
+      await vehicleService.delete(id);
+      setVehicles(vehicles.filter((v) => v.id !== id));
+      toast.success('Vehículo eliminado exitosamente');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar vehículo');
+    }
+    setDeleteTarget(null);
+  };
+
+  const handleEditVehicle = async () => {
+    if (!editTarget) return;
+    try {
+      const updated = await vehicleService.update(editTarget.id, { type: editType });
+      setVehicles(vehicles.map((v) => (v.id === editTarget.id ? updated : v)));
+      toast.success('Vehículo actualizado exitosamente');
+      setIsEditDialogOpen(false);
+      setEditTarget(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al actualizar vehículo');
+    }
+  };
+
+  const openEditDialog = (vehicle: Vehicle) => {
+    setEditTarget(vehicle);
+    setEditType(vehicle.type);
+    setIsEditDialogOpen(true);
   };
 
   const getVehicleIcon = (type: VehicleType) => {
     switch (type) {
-      case 'CAR':
+      case 'RESIDENT':
         return <Car className="w-4 h-4" />;
-      case 'MOTORCYCLE':
+      case 'NON_RESIDENT':
         return <Bike className="w-4 h-4" />;
-      case 'OFFICIAL':
+      case 'OFICIAL':
         return <Truck className="w-4 h-4" />;
     }
   };
 
   const getVehicleTypeLabel = (type: VehicleType) => {
     switch (type) {
-      case 'CAR':
-        return 'Automóvil';
-      case 'MOTORCYCLE':
-        return 'Motocicleta';
-      case 'OFFICIAL':
+      case 'RESIDENT':
+        return 'Residente';
+      case 'NON_RESIDENT':
+        return 'No Residente';
+      case 'OFICIAL':
         return 'Oficial';
     }
   };
 
   const getVehicleTypeBadge = (type: VehicleType) => {
     switch (type) {
-      case 'CAR':
+      case 'RESIDENT':
         return 'bg-indigo-50 text-indigo-600 border-0';
-      case 'MOTORCYCLE':
+      case 'NON_RESIDENT':
         return 'bg-violet-50 text-violet-600 border-0';
-      case 'OFFICIAL':
+      case 'OFICIAL':
         return 'bg-amber-50 text-amber-600 border-0';
     }
   };
@@ -135,9 +180,9 @@ export function Vehicles() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CAR">Automóvil</SelectItem>
-                    <SelectItem value="MOTORCYCLE">Motocicleta</SelectItem>
-                    <SelectItem value="OFFICIAL">Oficial</SelectItem>
+                    <SelectItem value="RESIDENT">Residente</SelectItem>
+                    <SelectItem value="NON_RESIDENT">No Residente</SelectItem>
+                    <SelectItem value="OFICIAL">Oficial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -156,7 +201,9 @@ export function Vehicles() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total vehículos</p>
-                <p className="text-2xl font-bold text-slate-900">{vehicles.length}</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">{vehicles.length}</p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20">
                 <Car className="w-5 h-5 text-white" />
@@ -168,10 +215,12 @@ export function Vehicles() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Automóviles</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {vehicles.filter((v) => v.type === 'CAR').length}
-                </p>
+                <p className="text-sm text-slate-500 mb-1">Residentes</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">
+                    {vehicles.filter((v) => v.type === 'RESIDENT').length}
+                  </p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
                 <Car className="w-5 h-5 text-white" />
@@ -183,10 +232,12 @@ export function Vehicles() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Motocicletas</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {vehicles.filter((v) => v.type === 'MOTORCYCLE').length}
-                </p>
+                <p className="text-sm text-slate-500 mb-1">No Residentes</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">
+                    {vehicles.filter((v) => v.type === 'NON_RESIDENT').length}
+                  </p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/20">
                 <Bike className="w-5 h-5 text-white" />
@@ -222,7 +273,15 @@ export function Vehicles() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVehicles.length === 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-6 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredVehicles.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center text-slate-400 py-12">
                       <Car className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -247,14 +306,19 @@ export function Vehicles() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600"
+                            onClick={() => openEditDialog(vehicle)}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => handleDeleteVehicle(vehicle.id)}
+                            onClick={() => setDeleteTarget(vehicle.id)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -268,6 +332,57 @@ export function Vehicles() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar vehículo</DialogTitle>
+            <DialogDescription>
+              Cambia el tipo de vehículo para {editTarget?.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Tipo de vehículo</Label>
+              <Select value={editType} onValueChange={(value: VehicleType) => setEditType(value)}>
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RESIDENT">Residente</SelectItem>
+                  <SelectItem value="NON_RESIDENT">No Residente</SelectItem>
+                  <SelectItem value="OFICIAL">Oficial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleEditVehicle} className="w-full h-11 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600">
+              Guardar cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar vehículo</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que deseas eliminar el vehículo {deleteTarget}? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && handleDeleteVehicle(deleteTarget)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

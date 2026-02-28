@@ -7,9 +7,11 @@ import { Label } from './ui/label';
 import { Card, CardContent } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
 
 export function Login() {
   const navigate = useNavigate();
+  const { login, signUp, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const [loginData, setLoginData] = useState({
@@ -22,44 +24,67 @@ export function Login() {
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
+
+  // Redirect if already authenticated
+  if (isAuthenticated) {
+    navigate('/app');
+    return null;
+  }
+
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
+    if (!/[A-Z]/.test(password)) return 'La contraseña debe contener al menos una mayúscula';
+    if (!/\d/.test(password)) return 'La contraseña debe contener al menos un número';
+    return null;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      localStorage.setItem('authToken', 'mock-jwt-token-' + Date.now());
-      localStorage.setItem('user', JSON.stringify({
-        name: 'Usuario Demo',
-        username: loginData.username,
-        email: 'demo@parking.com',
-        role: 'USER'
-      }));
-      
+    try {
+      await login({ username: loginData.username, password: loginData.password });
       toast.success('Inicio de sesión exitoso');
-      setIsLoading(false);
       navigate('/app');
-    }, 1000);
+    } catch (err: any) {
+      toast.error(err.message || 'Credenciales incorrectas');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const passwordError = validatePassword(signupData.password);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
+
+    if (signupData.password !== signupData.confirmPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
     setIsLoading(true);
 
-    setTimeout(() => {
-      localStorage.setItem('authToken', 'mock-jwt-token-' + Date.now());
-      localStorage.setItem('user', JSON.stringify({
+    try {
+      await signUp({
         name: signupData.name,
         username: signupData.username,
         email: signupData.email,
-        role: 'USER'
-      }));
-      
+        password: signupData.password,
+      });
       toast.success('Cuenta creada exitosamente');
-      setIsLoading(false);
       navigate('/app');
-    }, 1000);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al crear la cuenta');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,7 +97,7 @@ export function Login() {
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-400/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
-        
+
         {/* Grid pattern overlay */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
@@ -171,9 +196,9 @@ export function Login() {
                         className="h-12 bg-slate-50/50 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 transition-all"
                       />
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 text-base font-semibold" 
+                    <Button
+                      type="submit"
+                      className="w-full h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 text-base font-semibold"
                       disabled={isLoading}
                     >
                       {isLoading ? (
@@ -240,10 +265,23 @@ export function Login() {
                         required
                         className="h-11 bg-slate-50/50 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 transition-all"
                       />
+                      <p className="text-xs text-slate-400">Mínimo 8 caracteres, 1 mayúscula, 1 número</p>
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 text-base font-semibold" 
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-confirm-password" className="text-slate-700">Confirmar contraseña</Label>
+                      <Input
+                        id="signup-confirm-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={signupData.confirmPassword}
+                        onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
+                        required
+                        className="h-11 bg-slate-50/50 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 transition-all"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 text-base font-semibold"
                       disabled={isLoading}
                     >
                       {isLoading ? (

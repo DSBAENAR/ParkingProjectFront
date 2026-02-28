@@ -1,44 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router';
-import { 
-  Car, 
-  LayoutDashboard, 
-  FileText, 
-  CreditCard, 
-  Users, 
-  BarChart3, 
+import {
+  Car,
+  LayoutDashboard,
+  FileText,
+  CreditCard,
+  Users,
+  BarChart3,
   LogOut,
   Menu,
   X,
-  Bell,
-  Search
 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      navigate('/');
-      return;
-    }
-
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    await logout();
     toast.success('Sesión cerrada exitosamente');
     navigate('/');
   };
@@ -76,7 +71,7 @@ export function Layout() {
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-          
+
           return (
             <Link
               key={item.path}
@@ -84,16 +79,16 @@ export function Layout() {
               onClick={onItemClick}
               className={`
                 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200
-                ${isActive 
-                  ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
+                ${isActive
+                  ? 'bg-indigo-50 text-indigo-700 shadow-sm'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }
               `}
             >
               <div className={`
                 flex items-center justify-center w-8 h-8 rounded-lg mr-3 transition-all duration-200
-                ${isActive 
-                  ? 'bg-indigo-100' 
+                ${isActive
+                  ? 'bg-indigo-100'
                   : 'bg-transparent group-hover:bg-slate-50'
                 }
               `}>
@@ -123,14 +118,31 @@ export function Layout() {
             </div>
           </div>
         </div>
-        <Button 
-          onClick={handleLogout} 
-          variant="ghost" 
-          className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Cerrar sesión
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Cerrar sesión
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cerrar sesión</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que deseas cerrar sesión?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700">
+                Cerrar sesión
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
@@ -145,13 +157,13 @@ export function Layout() {
       {/* Sidebar móvil */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
-            onClick={() => setIsSidebarOpen(false)} 
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsSidebarOpen(false)}
           />
           <aside className="fixed inset-y-0 left-0 w-[260px] bg-white shadow-2xl z-50">
             <div className="absolute top-4 right-4">
-              <button 
+              <button
                 onClick={() => setIsSidebarOpen(false)}
                 className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
               >
@@ -182,17 +194,6 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden md:flex relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Buscar..."
-                className="w-56 pl-9 h-9 bg-slate-50 border-slate-200/60 text-sm"
-              />
-            </div>
-            <Button variant="ghost" size="icon" className="relative hover:bg-slate-100">
-              <Bell className="h-5 w-5 text-slate-500" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-            </Button>
             <div className="hidden lg:flex items-center ml-2 pl-3 border-l border-slate-200">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold text-xs">
