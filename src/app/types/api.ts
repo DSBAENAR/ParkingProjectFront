@@ -48,3 +48,16 @@ export interface ApiError {
   status: number;
   message: string;
 }
+
+export interface PaymentIntentRequest {
+  amount: number;
+  currency: string;
+  customerId?: string;
+  vehicleId?: string;
+  description?: string;
+}
+
+export interface PaymentIntentResponse {
+  clientSecret: string;
+  paymentIntentId: string;
+}

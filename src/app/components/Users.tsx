@@ -1,59 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users as UsersIcon, Search, Shield, User as UserIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
-
-interface User {
-  name: string;
-  username: string;
-  email: string;
-  role: 'USER' | 'ADMIN';
-}
+import { Skeleton } from './ui/skeleton';
+import { toast } from 'sonner';
+import { userService } from '../services/userService';
+import type { User } from '../types/api';
 
 export function Users() {
-  const [users] = useState<User[]>([
-    {
-      name: 'Admin Principal',
-      username: 'admin',
-      email: 'admin@parking.com',
-      role: 'ADMIN',
-    },
-    {
-      name: 'Juan Pérez',
-      username: 'jperez',
-      email: 'juan.perez@ejemplo.com',
-      role: 'USER',
-    },
-    {
-      name: 'María García',
-      username: 'mgarcia',
-      email: 'maria.garcia@ejemplo.com',
-      role: 'USER',
-    },
-    {
-      name: 'Carlos López',
-      username: 'clopez',
-      email: 'carlos.lopez@ejemplo.com',
-      role: 'USER',
-    },
-    {
-      name: 'Ana Martínez',
-      username: 'amartinez',
-      email: 'ana.martinez@ejemplo.com',
-      role: 'USER',
-    },
-    {
-      name: 'Roberto Silva',
-      username: 'rsilva',
-      email: 'roberto.silva@ejemplo.com',
-      role: 'ADMIN',
-    },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setIsLoading(true);
+    try {
+      const data = await userService.getAll();
+      setUsers(data);
+    } catch (err: any) {
+      if (err.status !== 404) toast.error(err.message || 'Error al cargar usuarios');
+      setUsers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredUsers = users.filter(
     (user) =>
@@ -88,7 +65,9 @@ export function Users() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total usuarios</p>
-                <p className="text-2xl font-bold text-slate-900">{users.length}</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">{users.length}</p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20">
                 <UsersIcon className="w-5 h-5 text-white" />
@@ -101,7 +80,9 @@ export function Users() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Administradores</p>
-                <p className="text-2xl font-bold text-slate-900">{adminCount}</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">{adminCount}</p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/20">
                 <Shield className="w-5 h-5 text-white" />
@@ -114,7 +95,9 @@ export function Users() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Usuarios regulares</p>
-                <p className="text-2xl font-bold text-slate-900">{userCount}</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">{userCount}</p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
                 <UserIcon className="w-5 h-5 text-white" />
@@ -151,7 +134,16 @@ export function Users() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length === 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-10 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-36" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-slate-400 py-12">
                       <UsersIcon className="w-8 h-8 mx-auto mb-2 text-slate-300" />

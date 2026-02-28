@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowDownRight, ArrowUpRight, Clock, Car, Bike, Truck, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -8,150 +8,97 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
+import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
-
-type VehicleType = 'CAR' | 'MOTORCYCLE' | 'OFFICIAL';
-
-interface Register {
-  id: number;
-  vehicle: {
-    id: string;
-    type: VehicleType;
-  };
-  entryDate: string;
-  exitDate: string | null;
-  minutes: number;
-}
+import { registerService } from '../services/registerService';
+import type { Register, VehicleType } from '../types/api';
 
 export function Registers() {
-  const [registers, setRegisters] = useState<Register[]>([
-    {
-      id: 1,
-      vehicle: { id: 'ABC-123', type: 'CAR' },
-      entryDate: '26-02-2026 08:30:00',
-      exitDate: '26-02-2026 17:45:00',
-      minutes: 555,
-    },
-    {
-      id: 2,
-      vehicle: { id: 'XYZ-789', type: 'MOTORCYCLE' },
-      entryDate: '26-02-2026 09:15:00',
-      exitDate: null,
-      minutes: 0,
-    },
-    {
-      id: 3,
-      vehicle: { id: 'DEF-456', type: 'CAR' },
-      entryDate: '26-02-2026 10:00:00',
-      exitDate: null,
-      minutes: 0,
-    },
-    {
-      id: 4,
-      vehicle: { id: 'GHI-321', type: 'OFFICIAL' },
-      entryDate: '25-02-2026 14:20:00',
-      exitDate: '25-02-2026 18:30:00',
-      minutes: 250,
-    },
-  ]);
-
+  const [registers, setRegisters] = useState<Register[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [selectedPlate, setSelectedPlate] = useState('');
-  const [selectedType, setSelectedType] = useState<VehicleType>('CAR');
+  const [selectedType, setSelectedType] = useState<VehicleType>('RESIDENT');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const activeRegisters = registers.filter((r) => !r.exitDate);
+  useEffect(() => {
+    loadRegisters();
+  }, []);
+
+  const loadRegisters = async () => {
+    setIsLoading(true);
+    try {
+      const data = await registerService.getAll();
+      setRegisters(data);
+    } catch (err: any) {
+      if (err.status !== 404) toast.error(err.message || 'Error al cargar registros');
+      setRegisters([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const activeRegisters = registers.filter((r) => !r.exitdate);
   const filteredRegisters = registers.filter((r) =>
     r.vehicle.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleRegisterEntry = () => {
+  const handleRegisterEntry = async () => {
     if (!selectedPlate) {
       toast.error('Por favor ingresa una placa');
       return;
     }
 
-    const existingActive = registers.find(
-      (r) => r.vehicle.id === selectedPlate && !r.exitDate
-    );
-
-    if (existingActive) {
-      toast.error('Este vehículo ya tiene un registro activo');
-      return;
+    setIsSubmitting(true);
+    try {
+      const newRegister = await registerService.registerEntry({ id: selectedPlate, type: selectedType });
+      setRegisters([newRegister, ...registers]);
+      toast.success('Entrada registrada exitosamente');
+      setIsEntryDialogOpen(false);
+      setSelectedPlate('');
+      setSelectedType('RESIDENT');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al registrar entrada');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newRegister: Register = {
-      id: Date.now(),
-      vehicle: { id: selectedPlate, type: selectedType },
-      entryDate: new Date().toLocaleString('es-CO', { 
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      }),
-      exitDate: null,
-      minutes: 0,
-    };
-
-    setRegisters([newRegister, ...registers]);
-    toast.success('Entrada registrada exitosamente');
-    setIsEntryDialogOpen(false);
-    setSelectedPlate('');
-    setSelectedType('CAR');
   };
 
-  const handleRegisterExit = () => {
+  const handleRegisterExit = async () => {
     if (!selectedPlate) {
       toast.error('Por favor ingresa una placa');
       return;
     }
 
-    const registerToUpdate = registers.find(
-      (r) => r.vehicle.id === selectedPlate && !r.exitDate
-    );
-
-    if (!registerToUpdate) {
+    const activeReg = registers.find((r) => r.vehicle.id === selectedPlate && !r.exitdate);
+    if (!activeReg) {
       toast.error('No se encontró un registro activo para este vehículo');
       return;
     }
 
-    const exitDate = new Date();
-    const entryDate = new Date(registerToUpdate.entryDate.split(' ')[0].split('-').reverse().join('-') + ' ' + registerToUpdate.entryDate.split(' ')[1]);
-    const minutes = Math.floor((exitDate.getTime() - entryDate.getTime()) / 60000);
-
-    const updatedRegisters = registers.map((r) =>
-      r.id === registerToUpdate.id
-        ? {
-            ...r,
-            exitDate: exitDate.toLocaleString('es-CO', { 
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            }),
-            minutes,
-          }
-        : r
-    );
-
-    setRegisters(updatedRegisters);
-    toast.success('Salida registrada exitosamente');
-    setIsExitDialogOpen(false);
-    setSelectedPlate('');
+    setIsSubmitting(true);
+    try {
+      const updated = await registerService.registerExit({ id: selectedPlate, type: activeReg.vehicle.type });
+      setRegisters(registers.map((r) => (r.id === activeReg.id ? updated : r)));
+      toast.success('Salida registrada exitosamente');
+      setIsExitDialogOpen(false);
+      setSelectedPlate('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al registrar salida');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getVehicleIcon = (type: VehicleType) => {
     switch (type) {
-      case 'CAR':
+      case 'RESIDENT':
         return <Car className="w-4 h-4" />;
-      case 'MOTORCYCLE':
+      case 'NON_RESIDENT':
         return <Bike className="w-4 h-4" />;
-      case 'OFFICIAL':
+      case 'OFICIAL':
         return <Truck className="w-4 h-4" />;
     }
   };
@@ -205,14 +152,14 @@ export function Registers() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CAR">Automóvil</SelectItem>
-                      <SelectItem value="MOTORCYCLE">Motocicleta</SelectItem>
-                      <SelectItem value="OFFICIAL">Oficial</SelectItem>
+                      <SelectItem value="RESIDENT">Residente</SelectItem>
+                      <SelectItem value="NON_RESIDENT">No Residente</SelectItem>
+                      <SelectItem value="OFICIAL">Oficial</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleRegisterEntry} className="w-full">
-                  Registrar entrada
+                <Button onClick={handleRegisterEntry} disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? 'Registrando...' : 'Registrar entrada'}
                 </Button>
               </div>
             </DialogContent>
@@ -258,8 +205,8 @@ export function Registers() {
                     </div>
                   </div>
                 )}
-                <Button onClick={handleRegisterExit} className="w-full">
-                  Registrar salida
+                <Button onClick={handleRegisterExit} disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? 'Registrando...' : 'Registrar salida'}
                 </Button>
               </div>
             </DialogContent>
@@ -274,7 +221,9 @@ export function Registers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total registros</p>
-                <p className="text-2xl font-bold text-slate-900">{registers.length}</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">{registers.length}</p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20">
                 <Clock className="w-5 h-5 text-white" />
@@ -287,7 +236,9 @@ export function Registers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Vehículos activos</p>
-                <p className="text-2xl font-bold text-slate-900">{activeRegisters.length}</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">{activeRegisters.length}</p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
                 <ArrowUpRight className="w-5 h-5 text-white" />
@@ -295,14 +246,16 @@ export function Registers() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Completados hoy</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {registers.filter((r) => r.exitDate).length}
-                </p>
+                <p className="text-sm text-slate-500 mb-1">Completados</p>
+                {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className="text-2xl font-bold text-slate-900">
+                    {registers.filter((r) => r.exitdate).length}
+                  </p>
+                )}
               </div>
               <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/20">
                 <ArrowDownRight className="w-5 h-5 text-white" />
@@ -340,7 +293,17 @@ export function Registers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRegisters.length === 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredRegisters.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-slate-400 py-12">
                       <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -358,13 +321,13 @@ export function Registers() {
                           <span className="font-semibold text-slate-900">{register.vehicle.id}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-slate-600 text-sm">{register.entryDate}</TableCell>
-                      <TableCell className="text-slate-600 text-sm">{register.exitDate || '-'}</TableCell>
+                      <TableCell className="text-slate-600 text-sm">{register.entrydate}</TableCell>
+                      <TableCell className="text-slate-600 text-sm">{register.exitdate || '-'}</TableCell>
                       <TableCell className="text-slate-600 text-sm">{formatMinutes(register.minutes)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={register.exitDate ? 'bg-slate-50 text-slate-500 border-0' : 'bg-emerald-50 text-emerald-600 border-0'}>
-                          <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${register.exitDate ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`} />
-                          {register.exitDate ? 'Completado' : 'Activo'}
+                        <Badge variant="outline" className={register.exitdate ? 'bg-slate-50 text-slate-500 border-0' : 'bg-emerald-50 text-emerald-600 border-0'}>
+                          <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${register.exitdate ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`} />
+                          {register.exitdate ? 'Completado' : 'Activo'}
                         </Badge>
                       </TableCell>
                     </TableRow>
