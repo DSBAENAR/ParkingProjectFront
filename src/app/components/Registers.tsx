@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowDownRight, ArrowUpRight, Clock, Car, Bike, Truck, Search } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Clock, Car, Bike, Truck, Search, Phone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -21,6 +21,7 @@ export function Registers() {
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [selectedPlate, setSelectedPlate] = useState('');
   const [selectedType, setSelectedType] = useState<VehicleType>('RESIDENT');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -53,12 +54,17 @@ export function Registers() {
 
     setIsSubmitting(true);
     try {
-      const newRegister = await registerService.registerEntry({ id: selectedPlate, type: selectedType });
+      const newRegister = await registerService.registerEntry({
+        vehicleId: selectedPlate,
+        vehicleType: selectedType,
+        phoneNumber: phoneNumber || undefined,
+      });
       setRegisters([newRegister, ...registers]);
       toast.success('Entrada registrada exitosamente');
       setIsEntryDialogOpen(false);
       setSelectedPlate('');
       setSelectedType('RESIDENT');
+      setPhoneNumber('');
     } catch (err: any) {
       toast.error(err.message || 'Error al registrar entrada');
     } finally {
@@ -157,6 +163,15 @@ export function Registers() {
                       <SelectItem value="OFICIAL">Oficial</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entry-phone">Teléfono (opcional)</Label>
+                  <Input
+                    id="entry-phone"
+                    placeholder="+573001234567"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                  />
                 </div>
                 <Button onClick={handleRegisterEntry} disabled={isSubmitting} className="w-full">
                   {isSubmitting ? 'Registrando...' : 'Registrar entrada'}
@@ -286,6 +301,7 @@ export function Registers() {
               <TableHeader>
                 <TableRow className="border-slate-100">
                   <TableHead className="text-slate-500">Vehículo</TableHead>
+                  <TableHead className="text-slate-500">Teléfono</TableHead>
                   <TableHead className="text-slate-500">Entrada</TableHead>
                   <TableHead className="text-slate-500">Salida</TableHead>
                   <TableHead className="text-slate-500">Duración</TableHead>
@@ -297,6 +313,7 @@ export function Registers() {
                   Array.from({ length: 4 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-16" /></TableCell>
@@ -305,7 +322,7 @@ export function Registers() {
                   ))
                 ) : filteredRegisters.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-slate-400 py-12">
+                    <TableCell colSpan={6} className="text-center text-slate-400 py-12">
                       <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       No se encontraron registros
                     </TableCell>
@@ -320,6 +337,14 @@ export function Registers() {
                           </div>
                           <span className="font-semibold text-slate-900">{register.vehicle.id}</span>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-slate-600 text-sm">
+                        {register.phoneNumber ? (
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {register.phoneNumber}
+                          </div>
+                        ) : '-'}
                       </TableCell>
                       <TableCell className="text-slate-600 text-sm">{register.entrydate}</TableCell>
                       <TableCell className="text-slate-600 text-sm">{register.exitdate || '-'}</TableCell>

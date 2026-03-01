@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Register, Vehicle } from '../types/api';
+import type { Register, RegisterEntryRequest, Vehicle } from '../types/api';
 
 const BASE = '/api/v1/parking';
 
@@ -9,8 +9,8 @@ export const registerService = {
     return data.registers;
   },
 
-  async registerEntry(vehicle: Pick<Vehicle, 'id' | 'type'>): Promise<Register> {
-    const data = await apiClient.post<{ register: Register; message: string }>(`${BASE}/register`, vehicle);
+  async registerEntry(request: RegisterEntryRequest): Promise<Register> {
+    const data = await apiClient.post<{ register: Register; message: string }>(`${BASE}/register`, request);
     return data.register;
   },
 

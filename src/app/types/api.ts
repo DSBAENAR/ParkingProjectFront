@@ -11,6 +11,13 @@ export interface Register {
   entrydate: string;
   exitdate: string | null;
   minutes: number;
+  phoneNumber?: string;
+}
+
+export interface RegisterEntryRequest {
+  vehicleId: string;
+  vehicleType: VehicleType;
+  phoneNumber?: string;
 }
 
 export interface User {
@@ -32,6 +39,7 @@ export interface AuthResponse {
     name: string;
     email: string;
     username: string;
+    role: string;
   };
   token: string;
   message: string;

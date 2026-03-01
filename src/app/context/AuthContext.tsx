@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: response.user.name,
       username: response.user.username,
       email: response.user.email,
+      role: response.user.role,
     });
   }, []);
 
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: response.user.name,
       username: response.user.username,
       email: response.user.email,
+      role: response.user.role,
     });
   }, []);
 

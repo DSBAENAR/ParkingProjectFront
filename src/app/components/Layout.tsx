@@ -38,14 +38,16 @@ export function Layout() {
     navigate('/');
   };
 
-  const menuItems = [
-    { path: '/app', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/app/vehicles', icon: Car, label: 'Vehículos' },
-    { path: '/app/registers', icon: FileText, label: 'Registros' },
-    { path: '/app/payments', icon: CreditCard, label: 'Pagos' },
-    { path: '/app/users', icon: Users, label: 'Usuarios' },
-    { path: '/app/reports', icon: BarChart3, label: 'Reportes' },
+  const allMenuItems = [
+    { path: '/app', icon: LayoutDashboard, label: 'Dashboard', roles: ['ADMIN'] },
+    { path: '/app/vehicles', icon: Car, label: 'Vehículos', roles: ['ADMIN', 'USER'] },
+    { path: '/app/registers', icon: FileText, label: 'Registros', roles: ['ADMIN', 'USER'] },
+    { path: '/app/payments', icon: CreditCard, label: 'Pagos', roles: ['ADMIN', 'USER'] },
+    { path: '/app/users', icon: Users, label: 'Usuarios', roles: ['ADMIN'] },
+    { path: '/app/reports', icon: BarChart3, label: 'Reportes', roles: ['ADMIN'] },
   ];
+
+  const menuItems = allMenuItems.filter(item => item.roles.includes(user?.role || ''));
 
   const getPageTitle = () => {
     const current = menuItems.find(item => item.path === location.pathname);

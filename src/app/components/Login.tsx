@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Car, LogIn, UserPlus, Shield, Zap, Clock } from 'lucide-react';
 import { Button } from './ui/button';
@@ -28,8 +28,13 @@ export function Login() {
   });
 
   // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/app', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   if (isAuthenticated) {
-    navigate('/app');
     return null;
   }
 

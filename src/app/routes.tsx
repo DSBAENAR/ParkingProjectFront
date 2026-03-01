@@ -7,6 +7,7 @@ import { Registers } from "./components/Registers";
 import { Payments } from "./components/Payments";
 import { Users } from "./components/Users";
 import { Reports } from "./components/Reports";
+import { PublicPayment } from "./components/PublicPayment";
 import { NotFound } from "./components/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -14,6 +15,10 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <Login />,
+  },
+  {
+    path: "/pay/:registerId",
+    element: <PublicPayment />,
   },
   {
     path: "/app",
